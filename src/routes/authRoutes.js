@@ -19,7 +19,7 @@ router.post("/admin/login", authController.adminLogin);
 router.post(
   "/admin/create-account",
   passport.authenticate("jwt", { session: false }),
-  requireRole(0),
+  requireRole([0, 3]),
   authController.createAdminAccount
 );
 
