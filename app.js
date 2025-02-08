@@ -1,11 +1,7 @@
 import express from "express";
 import cors from "cors";
 import passport from "./src/config/passport.js";
-
-// import profileRouter from "./routes/profile.routes.js";
-// import authRouter from "./routes/auth.routes.js";
 import authRoutes from "./src/routes/authRoutes.js";
-import adminRoutes from "./src/routes/adminRoutes.js";
 
 const app = express();
 app.use(cors());
@@ -28,8 +24,5 @@ app.get("/", function (req, res) {
 
 // Routes
 app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/admin", adminRoutes);
-// app.use("/api/v1/auth", authRouter);
-// app.use("/api/v1/profile", profileRouter);
 
 export { app };

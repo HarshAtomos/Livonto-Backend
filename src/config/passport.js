@@ -3,7 +3,6 @@ import GoogleStrategy from "passport-google-oauth20";
 import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
-import bcrypt from "bcrypt";
 
 // Google OAuth Strategy
 passport.use(
@@ -27,7 +26,7 @@ passport.use(
             data: {
               googleId: id,
               email: email,
-              name: displayName,
+              username: displayName,
             },
           });
         }
@@ -50,7 +49,7 @@ passport.use(
   new JwtStrategy(jwtOptions, async (payload, done) => {
     try {
       // Check for both admin and regular users
-      const admin = await prisma.admin.findUnique({
+      const admin = await prisma.user.findUnique({
         where: { id: payload.id },
       });
 
