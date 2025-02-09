@@ -51,6 +51,9 @@ passport.use(
       // Check for both admin and regular users
       const admin = await prisma.user.findUnique({
         where: { id: payload.id },
+        include: {
+          role: true,
+        },
       });
 
       if (admin) {

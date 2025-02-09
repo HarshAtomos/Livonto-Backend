@@ -26,7 +26,9 @@ model User {
   first_name     String?    
   last_name      String?    
   phone_number   String?    
+  city           String?    
   address        String?    
+  profile_image  String?    
   occupation     String?    
   created_at     DateTime   @default(now())
   employees      Employee[] @relation("UserEmployees")
@@ -39,6 +41,7 @@ model User {
   complaints     Complaint[]
   favorites      Favorite[]
   employeeVisits Visit[]  @relation("EmployeeVisits")
+  visitFeedbacks VisitFeedback[]
 
   @@map("users")
 }
@@ -57,6 +60,13 @@ enum PropertyStatus {
   occupied
   under_maintenance
   pending_approval
+  rejected
+}
+
+enum PropertyGender {
+  male
+  female
+  mixed
 }
 
 model Property {
@@ -65,23 +75,23 @@ model Property {
   description     String?        
   address         String         
   city            String         
-  gender          String?        
-  property_owner_id Int
-  property_owner    User           @relation("PropertyOwner", fields: [property_owner_id], references: [id])
-  manager_id      Int
-  manager         User           @relation("PropertyManager", fields: [manager_id], references: [id])
+  gender          PropertyGender @default(mixed)
+  wannabe_property_owner Json
+  property_owner_id Int?
+  property_owner    User?         @relation("PropertyOwner", fields: [property_owner_id], references: [id])
+  manager_id      Int?
+  manager         User?           @relation("PropertyManager", fields: [manager_id], references: [id])
   status          PropertyStatus @default(pending_approval)
   created_at      DateTime       @default(now())
-  landmarks       String?        
-  amenities       String?        
-  tags            String?        
+  landmarks       String[]
+  amenities       String[]
+  tags            String[]
   property_images PropertyImage[]
   room_types      RoomType[]
   reviews         Review[]
   visits          Visit[]
   complaints      Complaint[]
   favorites       Favorite[]
-
   @@map("properties")
 }
 
@@ -90,7 +100,8 @@ model PropertyImage {
   property_id Int
   property    Property @relation(fields: [property_id], references: [id])
   image_url   String  
-  title       String? 
+  title       String?
+  tags        String? @default("all")
   description String? 
 
   @@map("property_images")
@@ -105,8 +116,8 @@ model RoomType {
   price           Decimal 
   total_beds      Int
   available_beds  Int
-  occupancy_gender String? 
-  amenities       String? 
+  occupancy_gender String 
+  amenities       String[]
   bookings        Booking[]
   @@map("room_types")
 }
@@ -124,6 +135,12 @@ model Review {
   @@map("reviews")
 }
 
+enum BookingStatus {
+  pending_approval
+  active
+  expired
+}
+
 model Booking {
   id            Int      @id @default(autoincrement())
   user_id       Int
@@ -136,9 +153,17 @@ model Booking {
   rent_amount   Decimal 
   security_deposit Decimal? 
   payment_status String? 
+  status         BookingStatus @default(pending_approval)
   created_at    DateTime @default(now())
 
   @@map("bookings")
+}
+
+enum VisitStatus {
+  pending_approval
+  approved
+  cancelled
+  completed
 }
 
 model Visit {
@@ -147,14 +172,28 @@ model Visit {
   user           User      @relation(fields: [user_id], references: [id])
   property_id    Int
   property       Property  @relation(fields: [property_id], references: [id])
-  scheduled_time DateTime 
+  scheduled_date DateTime? 
+  scheduled_time DateTime? 
   employee_id    Int?
   employee       User? @relation("EmployeeVisits", fields: [employee_id], references: [id])
-  status         String?  
-  feedback       String?  
+  status         VisitStatus? @default(pending_approval)
+  notes          String?
+  feedback       VisitFeedback[]
   created_at     DateTime  @default(now())
 
   @@map("visits")
+}
+
+model VisitFeedback {
+  id           Int      @id @default(autoincrement())
+  user_id      Int
+  user         User     @relation(fields: [user_id], references: [id])
+  visit_id     Int
+  visit        Visit    @relation(fields: [visit_id], references: [id])
+  feedback     String
+  created_at   DateTime @default(now())
+
+  @@map("visit_feedbacks")
 }
 
 model Complaint {
@@ -163,7 +202,11 @@ model Complaint {
   user         User     @relation(fields: [user_id], references: [id])
   property_id  Int?
   property     Property? @relation(fields: [property_id], references: [id])
-  complaint_text String  
+  title        String
+  description  String
+  category     String
+  priority     String? @default("low")
+  resolution   String?
   status       String?  @default("active")
   created_at   DateTime @default(now())
 
