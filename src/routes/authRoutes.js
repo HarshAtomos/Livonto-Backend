@@ -2,6 +2,7 @@ import express from "express";
 import passport from "../config/passport.js";
 import { isAuthenticated, requireRole } from "../middlewares/authMiddleware.js";
 import authController from "../controllers/authController.js";
+import { user_role } from "@prisma/client"; // Import the enum
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ router.post(
   "/admin/create-account",
   passport.authenticate("jwt", { session: false }),
   isAuthenticated,
-  requireRole([0, 3]),
+  requireRole([user_role.ADMIN, user_role.MANAGER]),
   authController.createAdminAccount
 );
 

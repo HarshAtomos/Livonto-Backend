@@ -4,12 +4,12 @@ export const requireRole = (allowedRoles) => {
   return (req, res, next) => {
     const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
 
-    if (roles.includes(req.user.role_id)) {
+    if (roles.includes(req.user.role)) {
       next();
     } else {
       res.status(403).json({
         status: "error",
-        message: "Forbidden",
+        message: "Forbidden - Insufficient permissions",
       });
     }
   };

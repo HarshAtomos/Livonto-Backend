@@ -1,63 +1,40 @@
 import express from "express";
 import { isAuthenticated, requireRole } from "../middlewares/authMiddleware.js";
 import propertyController from "../controllers/propertyController.js";
+import { user_role } from "@prisma/client";
 
 const router = express.Router();
 
-// Public routes
-router.get("/", propertyController.getProperties);
-
-router.get("/info/:id", propertyController.getPropertyInfo);
-
-// Protected routes with role-based access
-
-router.get(
-  "/admin",
-  isAuthenticated,
-  requireRole([0, 2, 3]), // admin, property_owner, manager
-  propertyController.getAdminProperties
-);
-
 router.post(
-  "/request",
+  "/create",
   isAuthenticated,
-  requireRole([0, 2, 3, 1]), // admin, property_owner, manager, user
-  propertyController.createPropertyRequest
+  requireRole([user_role.ADMIN, user_role.PROPERTY_OWNER]),
+  propertyController.createProperty
 );
 
-router.get(
-  "/admin/requests",
+router.get("/all", propertyController.getAllProperties);
+
+router.get("/detail/:id", propertyController.getPropertyById);
+
+router.put(
+  "/update/:id",
   isAuthenticated,
-  requireRole([0, 3]), // admin, manager
-  propertyController.getPendingRequests
+  requireRole([user_role.ADMIN]),
+  propertyController.updateProperty
 );
 
-router.patch(
-  "/admin/requests/:id",
+router.delete(
+  "/delete/:id",
   isAuthenticated,
-  requireRole([0]), // admin only
-  propertyController.updateRequestStatus
-);
-
-router.patch(
-  "/admin/:id",
-  isAuthenticated,
-  requireRole([0, 2, 3]), // admin, property_owner, manager
-  propertyController.updatePropertyDetails
-);
-
-router.post(
-  "/admin/:id/rooms",
-  isAuthenticated,
-  requireRole([0, 3]), // admin, manager
-  propertyController.updateRoomType
+  requireRole([user_role.ADMIN]),
+  propertyController.deleteProperty
 );
 
 router.patch(
-  "/admin/:id/rooms/:roomId/availability",
+  "/rooms/:roomId",
   isAuthenticated,
-  requireRole([0, 2, 3]), // admin, property_owner, manager
-  propertyController.updateRoomAvailability
+  requireRole([user_role.ADMIN, user_role.PROPERTY_OWNER]),
+  propertyController.updateRoomDetails
 );
 
 export default router;

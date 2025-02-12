@@ -8,7 +8,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "seed": "node prisma/seed.js",
-    "check-format": "node scripts/check-format.js"
+    "check-format": "node scripts/check-format.js",
+    "generate-enums": "node scripts/generate-enums.js"
   },
   "keywords": [],
   "author": "Harsh Baid",

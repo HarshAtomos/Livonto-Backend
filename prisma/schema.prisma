@@ -8,218 +8,277 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
         
-model Role {
-  id        Int      @id @default(autoincrement())
-  role_name String?   
-  users     User[]
-  @@map("roles")
+enum user_role {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+  PROPERTY_OWNER
+  USER
+}
+
+enum property_availability {
+  BOYS
+  GIRLS
+  COED
+}
+
+enum preferred_tenants {
+  STUDENTS
+  WORKING_PROFESSIONALS
+  ANYONE
+}
+
+enum food_availability {
+  VEGETARIAN
+  NON_VEGETARIAN
+  BOTH
+  NONE
+}
+
+enum property_status {
+  UNLISTED
+  AVAILABLE
+  OCCUPIED
+  PENDING_APPROVAL
+  REJECTED
+}
+
+enum occupancy_type {
+  SINGLE
+  DOUBLE
+  TRIPLE
+  OTHERS
+}
+
+enum booking_status {
+  PAID
+  ACTIVE
+  EXPIRED
+}
+
+enum visit_status {
+  PENDING_APPROVAL
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  DELAYED
 }
 
 model User {
-  id             Int        @id @default(autoincrement())
-  username       String     @unique
-  googleId       String?    @unique
-  email          String?     @unique
+  id             String   @id @default(uuid())
+  name           String?
+  username       String? @unique
+  googleId       String? @unique
+  email          String? @unique
   password       String?
-  role_id        Int        @default(1)
-  role           Role       @relation(fields: [role_id], references: [id])
-  first_name     String?    
-  last_name      String?    
-  phone_number   String?    
-  city           String?    
-  address        String?    
-  profile_image  String?    
-  occupation     String?    
-  created_at     DateTime   @default(now())
-  employees      Employee[] @relation("UserEmployees")
-  managedEmployees Employee[] @relation("ManagerEmployees")
-  properties     Property[] @relation("PropertyOwner")
-  managedProperties Property[] @relation("PropertyManager")
-  reviews        Review[]
-  bookings       Booking[]
-  visits         Visit[]
-  complaints     Complaint[]
-  favorites      Favorite[]
-  employeeVisits Visit[]  @relation("EmployeeVisits")
-  visitFeedbacks VisitFeedback[]
+  role           user_role @default(USER)
+  phone          String?
+  city           String?
+  address        String?
+  profileImage   String?
+  occupation     String?
+  gender         String?
+  referralCode   String?
+  referrals      Int      @default(0)
+  paidReferrals  Int      @default(0)
+  managerId      String?
+  manager        User?    @relation("UserManager", fields: [managerId], references: [id])
+  employees      User[]   @relation("UserManager")
 
-  @@map("users")
-}
-
-model Employee {
-  id      Int   @id @default(autoincrement())
-  user_id Int
-  user    User  @relation("UserEmployees", fields: [user_id], references: [id])
-  manager Int
-  managerUser    User  @relation("ManagerEmployees", fields: [manager], references: [id])
-  @@map("employees")
-}
-
-enum PropertyStatus {
-  available
-  occupied
-  under_maintenance
-  pending_approval
-  rejected
-}
-
-enum PropertyGender {
-  male
-  female
-  mixed
+  ownedProperties   Property[] @relation("OwnedProperties")
+  managedProperties Property[] @relation("ManagedProperties")
+  reviews           Review[]
+  visitsAsUser      Visit[]    @relation("VisitUser")
+  visitsAsManager   Visit[]    @relation("VisitManager")
+  visitsAsEmployee  Visit[]    @relation("VisitEmployee")
+  bookings          Booking[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Property {
-  id              Int            @id @default(autoincrement())
-  name            String          
-  description     String?        
-  address         String         
-  city            String         
-  gender          PropertyGender @default(mixed)
-  wannabe_property_owner Json
-  property_owner_id Int?
-  property_owner    User?         @relation("PropertyOwner", fields: [property_owner_id], references: [id])
-  manager_id      Int?
-  manager         User?           @relation("PropertyManager", fields: [manager_id], references: [id])
-  status          PropertyStatus @default(pending_approval)
-  created_at      DateTime       @default(now())
-  landmarks       String[]
-  amenities       String[]
-  tags            String[]
-  property_images PropertyImage[]
-  room_types      RoomType[]
-  reviews         Review[]
-  visits          Visit[]
-  complaints      Complaint[]
-  favorites       Favorite[]
-  @@map("properties")
+  id             String   @id @default(uuid())
+  name           String
+  description    String?
+  address        String?
+  googleMapLocation String?
+  landmarks      String[]
+  depositAmount  Decimal?  @db.Decimal
+  noticePeriod   Int? @default(0)
+  noticePeriodUnit String? @default("days")
+  availableFor   property_availability? @default(COED)
+  preferredTenants preferred_tenants? @default(ANYONE)
+  operatingSince String? @default("2025")
+  electricityCharges String?  @default("As per Usage")
+  foodAvailability food_availability? @default(NONE)
+  gateClosingTime String? @default("No Gate Closing time")
+  status         property_status? @default(UNLISTED)
+  totalBeds     Int?
+  totalAvailableBeds Int?
+
+  ownerId        String?
+  managerId      String?
+  owner          User?      @relation("OwnedProperties", fields: [ownerId], references: [id])
+  manager        User?      @relation("ManagedProperties", fields: [managerId], references: [id])
+
+  rooms          Room[]
+  images         PropertyImage[]
+  reviews        Review[]
+  visits         Visit[]
+  bookings       Booking[]
+  propertyAmenities PropertyAmenity[]
+  propertyHouseRules PropertyHouseRule[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Room {
+  id             String   @id @default(uuid())
+  propertyId     String
+  occupancyType  occupancy_type?
+  numberOfBeds   Int?
+  rent           Decimal?        @db.Decimal
+  roomDimension  String?
+  numberOfRooms  Int?
+  numberOfAvailableRooms Int?
+  property       Property       @relation(fields: [propertyId], references: [id])
+  bookingRooms   BookingRoom[]
+  roomAmenities  RoomAmenity[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model PropertyImage {
-  id          Int     @id @default(autoincrement())
-  property_id Int
-  property    Property @relation(fields: [property_id], references: [id])
-  image_url   String  
-  title       String?
-  tags        String? @default("all")
-  description String? 
+  id             String   @id @default(uuid())
+  propertyId     String
+  url            String
+  title          String?
+  tag            String? 
+  description    String?
 
-  @@map("property_images")
-}
-
-model RoomType {
-  id              Int      @id @default(autoincrement())
-  property_id     Int
-  property        Property @relation(fields: [property_id], references: [id])
-  name            String  
-  description     String? 
-  price           Decimal 
-  total_beds      Int
-  available_beds  Int
-  occupancy_gender String 
-  amenities       String[]
-  bookings        Booking[]
-  @@map("room_types")
+  property       Property  @relation(fields: [propertyId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Review {
-  id         Int      @id @default(autoincrement())
-  property_id Int
-  property    Property @relation(fields: [property_id], references: [id])
-  user_id     Int
-  user        User     @relation(fields: [user_id], references: [id])
-  rating     Int
-  comment    String? 
-  created_at DateTime @default(now())
+  id             String   @id @default(uuid())
+  propertyId     String
+  userId         String
+  rating         Int
+  review         String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  @@map("reviews")
-}
-
-enum BookingStatus {
-  pending_approval
-  active
-  expired
-}
-
-model Booking {
-  id            Int      @id @default(autoincrement())
-  user_id       Int
-  user          User     @relation(fields: [user_id], references: [id])
-  room_type_id  Int
-  room_type     RoomType @relation(fields: [room_type_id], references: [id])
-  booking_date  DateTime 
-  check_in_date DateTime 
-  check_out_date DateTime? 
-  rent_amount   Decimal 
-  security_deposit Decimal? 
-  payment_status String? 
-  status         BookingStatus @default(pending_approval)
-  created_at    DateTime @default(now())
-
-  @@map("bookings")
-}
-
-enum VisitStatus {
-  pending_approval
-  approved
-  cancelled
-  completed
+  property       Property @relation(fields: [propertyId], references: [id])
+  user           User     @relation(fields: [userId], references: [id])
 }
 
 model Visit {
-  id             Int       @id @default(autoincrement())
-  user_id        Int
-  user           User      @relation(fields: [user_id], references: [id])
-  property_id    Int
-  property       Property  @relation(fields: [property_id], references: [id])
-  scheduled_date DateTime? 
-  scheduled_time DateTime? 
-  employee_id    Int?
-  employee       User? @relation("EmployeeVisits", fields: [employee_id], references: [id])
-  status         VisitStatus? @default(pending_approval)
-  notes          String?
-  feedback       VisitFeedback[]
-  created_at     DateTime  @default(now())
+  id             String   @id @default(uuid())
+  propertyId     String
+  userId         String
+  managerId      String?
+  employeeId     String?
+  additionalInfo String?
+  scheduledAt   DateTime?
+  status         visit_status @default(PENDING_APPROVAL)
+  feedback       String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime @updatedAt
 
-  @@map("visits")
+  property       Property     @relation(fields: [propertyId], references: [id])
+  user           User         @relation("VisitUser", fields: [userId], references: [id])
+  manager        User?        @relation("VisitManager", fields: [managerId], references: [id])
+  employee       User?        @relation("VisitEmployee", fields: [employeeId], references: [id])
+  booking        Booking?     @relation("VisitBooking")
 }
 
-model VisitFeedback {
-  id           Int      @id @default(autoincrement())
-  user_id      Int
-  user         User     @relation(fields: [user_id], references: [id])
-  visit_id     Int
-  visit        Visit    @relation(fields: [visit_id], references: [id])
-  feedback     String
-  created_at   DateTime @default(now())
+model Booking {
+  id                String       @id
+  visitId           String       @unique
+  propertyId        String
+  userId            String
+  paymentAmount     Decimal      @db.Decimal
+  paymentTimestamp  DateTime     @default(now())
+  validity          DateTime
+  status            booking_status
 
-  @@map("visit_feedbacks")
+  visit    Visit    @relation("VisitBooking", fields: [visitId], references: [id])
+  property Property @relation(fields: [propertyId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+  
+  bookingRooms BookingRoom[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
-model Complaint {
-  id           Int      @id @default(autoincrement())
-  user_id      Int
-  user         User     @relation(fields: [user_id], references: [id])
-  property_id  Int?
-  property     Property? @relation(fields: [property_id], references: [id])
-  title        String
-  description  String
-  category     String
-  priority     String? @default("low")
-  resolution   String?
-  status       String?  @default("active")
-  created_at   DateTime @default(now())
+model BookingRoom {
+  bookingId      String
+  roomId         String
+  quantity       Int
 
-  @@map("complaints")
+  booking        Booking @relation(fields: [bookingId], references: [id])
+  room           Room    @relation(fields: [roomId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@id([bookingId, roomId])
 }
 
-model Favorite {
-  user_id     Int
-  user        User     @relation(fields: [user_id], references: [id])
-  property_id Int
-  property    Property @relation(fields: [property_id], references: [id])
-  created_at  DateTime @default(now())
+model Amenity {
+  id             String   @id @default(uuid())
+  name           String
+  description    String?
+  svgIcon        String?
+  propertyAmenities PropertyAmenity[]
+  roomAmenities     RoomAmenity[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
 
-  @@id([user_id, property_id])
-  @@map("favorites")
+model HouseRule {
+  id             String   @id @default(uuid())
+  rule           String
+  description    String?
+  svgIcon        String?
+  propertyHouseRules PropertyHouseRule[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model PropertyAmenity {
+  propertyId     String
+  amenityId       String
+
+  property       Property @relation(fields: [propertyId], references: [id])
+  amenity         Amenity  @relation(fields: [amenityId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@id([propertyId, amenityId])
+}
+
+model PropertyHouseRule {
+  propertyId     String
+  houseRuleId    String
+
+  property       Property  @relation(fields: [propertyId], references: [id])
+  houseRule      HouseRule @relation(fields: [houseRuleId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@id([propertyId, houseRuleId])
+}
+
+model RoomAmenity {
+  roomId         String
+  amenityId       String
+
+  room           Room    @relation(fields: [roomId], references: [id])
+  amenity         Amenity @relation(fields: [amenityId], references: [id])
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@id([roomId, amenityId])
 }
