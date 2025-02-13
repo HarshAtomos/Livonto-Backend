@@ -61,11 +61,11 @@ async function main() {
   console.log("Amenities created successfully");
   // Create house rules
   const houseRulesData = [
-    { rule: "Smoking", svgIcon: "no-smoking.svg" },
-    { rule: "Drinking", svgIcon: "no-alcohol.svg" },
-    { rule: "Pets", svgIcon: "no-pets.svg" },
-    { rule: "Parties", svgIcon: "no-parties.svg" },
-    { rule: "Loud Music", svgIcon: "no-loud-music.svg" },
+    { rule: "Smoking", svgIcon: "smoking.svg" },
+    { rule: "Drinking", svgIcon: "drinking.svg" },
+    { rule: "Pets", svgIcon: "pets.svg" },
+    { rule: "Parties", svgIcon: "parties.svg" },
+    { rule: "Loud Music", svgIcon: "loud-music.svg" },
     { rule: "Visitor Entry", svgIcon: "visitor-entry.svg" },
     { rule: "Opposite Gender", svgIcon: "opposite-gender.svg" },
     { rule: "Non Veg Food", svgIcon: "non-veg-food.svg" },

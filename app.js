@@ -9,9 +9,26 @@ const app = express();
 app.use(cors());
 app.set("trust proxy", true);
 
+const allowedOrigins = process.env.CORS_ORIGIN?.split(",") || [
+  "http://localhost:3000",
+  "http://admin.localhost:3000",
+  "http://dashboard.localhost:3000",
+];
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+
+      if (
+        allowedOrigins.indexOf(origin) !== -1 ||
+        process.env.NODE_ENV === "development"
+      ) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );

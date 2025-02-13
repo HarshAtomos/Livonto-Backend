@@ -210,7 +210,7 @@ const getAllProperties = async (req, res) => {
 
       // Filters
       search, // Search in name/description/address
-      availableFor, // BOYS/GIRLS/COED
+      availableFor, // BOYS/GIRLS/BOTH
       preferredTenants, // STUDENTS/WORKING_PROFESSIONALS/ANYONE
       foodAvailability, // VEGETARIAN/NON_VEGETARIAN/BOTH/NONE
       minRent,
@@ -702,7 +702,7 @@ const deleteProperty = async (req, res) => {
     });
   }
 };
-
+// TODO: add a route to get all amenities and house rules
 /**
  * @desc Update room details (available rooms, total rooms)
  * @route PATCH /api/properties/rooms/:roomId

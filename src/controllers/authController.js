@@ -15,6 +15,7 @@ const googleAuthCallback = (req, res) => {
   res.redirect(`http://localhost:3000/auth/callback?token=${token}`);
 };
 
+// TODO: blocking if failed to login multiple times
 /**
  * @desc Admin login
  * @route POST /admin/login

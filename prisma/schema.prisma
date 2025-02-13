@@ -19,7 +19,7 @@ enum user_role {
 enum property_availability {
   BOYS
   GIRLS
-  COED
+  BOTH
 }
 
 enum preferred_tenants {
@@ -106,7 +106,7 @@ model Property {
   depositAmount  Decimal?  @db.Decimal
   noticePeriod   Int? @default(0)
   noticePeriodUnit String? @default("days")
-  availableFor   property_availability? @default(COED)
+  availableFor   property_availability? @default(BOTH)
   preferredTenants preferred_tenants? @default(ANYONE)
   operatingSince String? @default("2025")
   electricityCharges String?  @default("As per Usage")
