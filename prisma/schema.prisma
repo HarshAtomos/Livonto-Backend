@@ -183,7 +183,9 @@ model Visit {
   additionalInfo String?
   scheduledAt   DateTime?
   status         visit_status @default(PENDING_APPROVAL)
-  feedback       String?
+  userFeedbacks     String[]    // Array of JSON strings
+  managerFeedbacks  String[]    // Array of JSON strings
+  employeeFeedbacks String[]    // Array of JSON strings
   createdAt      DateTime     @default(now())
   updatedAt      DateTime @updatedAt
 

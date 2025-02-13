@@ -1,8 +1,8 @@
 import express from "express";
 import { isAuthenticated, requireRole } from "../middlewares/authMiddleware.js";
 import profileController from "../controllers/profileController.js";
+import { user_role } from "@prisma/client";
 import { checkProfileCompletion } from "../middlewares/profileMiddleware.js";
-import { user_role } from "@prisma/client"; // Import the enum
 
 const router = express.Router();
 

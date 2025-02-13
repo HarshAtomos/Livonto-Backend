@@ -99,6 +99,7 @@ const createProperty = async (req, res) => {
           foodAvailability,
           gateClosingTime,
           ownerId: req.user.id,
+          managerId: req.user.role === user_role.ADMIN ? req.user.id : null,
           totalBeds,
           totalAvailableBeds,
           status:
@@ -437,6 +438,8 @@ const updateProperty = async (req, res) => {
       houseRuleIds,
       rooms,
       images,
+      ownerId,
+      managerId,
     } = req.body;
 
     // Check if property exists
@@ -547,6 +550,8 @@ const updateProperty = async (req, res) => {
           status,
           totalBeds,
           totalAvailableBeds,
+          ownerId,
+          managerId,
           rooms: rooms
             ? {
                 create: rooms.map((room) => ({
@@ -598,6 +603,8 @@ const updateProperty = async (req, res) => {
             : undefined,
         },
         include: {
+          owner: true,
+          manager: true,
           rooms: {
             include: {
               roomAmenities: {

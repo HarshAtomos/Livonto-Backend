@@ -66,6 +66,10 @@ const getAllUsers = async (req, res) => {
   try {
     const userRole = req.user.role;
     const userId = req.user.id;
+    const { roles = ["MANAGER"] } = req.query; // Default to showing managers
+
+    // Convert single role to array if needed
+    const roleFilters = Array.isArray(roles) ? roles : [roles];
 
     // Check if user has permission to view users
     if (userRole !== "ADMIN" && userRole !== "MANAGER") {
@@ -76,28 +80,72 @@ const getAllUsers = async (req, res) => {
       });
     }
 
-    // Set where clause based on role
-    const whereClause = {
-      OR: [
-        {
-          role: "EMPLOYEE",
-          managerId: userId,
+    let whereClause = {};
+
+    // Admin can see filtered users
+    if (userRole === "ADMIN") {
+      whereClause = {
+        role: {
+          in: roleFilters,
         },
-        {
-          role: "MANAGER",
-          id: userId,
-        },
-      ],
-    };
+      };
+    }
+    // Manager can only see their employees and themselves
+    else if (userRole === "MANAGER") {
+      whereClause = {
+        OR: [
+          {
+            role: "EMPLOYEE",
+            managerId: userId,
+          },
+          {
+            role: "MANAGER",
+            id: userId,
+          },
+        ],
+      };
+    }
 
     const users = await prisma.user.findMany({
       where: whereClause,
+      orderBy: {
+        createdAt: "desc",
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        city: true,
+        address: true,
+        profileImage: true,
+        occupation: true,
+        gender: true,
+        createdAt: true,
+        manager: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+        employees: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
     });
-    const { password: _, ...usersWithoutPassword } = users;
+
     res.status(200).json({
       status: "success",
       message: "Users fetched successfully",
-      data: usersWithoutPassword,
+      data: users,
     });
   } catch (err) {
     console.error(err);
