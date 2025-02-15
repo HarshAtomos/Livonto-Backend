@@ -37,4 +37,10 @@ router.patch(
   propertyController.updateRoomDetails
 );
 
+router.put(
+  "/status/:id",
+  isAuthenticated,
+  requireRole([user_role.ADMIN]),
+  propertyController.updatePropertyStatus
+);
 export default router;

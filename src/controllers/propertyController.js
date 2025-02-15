@@ -716,7 +716,7 @@ const deleteProperty = async (req, res) => {
     });
   }
 };
-// TODO: add a route to get all amenities and house rules
+
 /**
  * @desc Update room details (available rooms, total rooms)
  * @route PATCH /api/properties/rooms/:roomId
@@ -817,6 +817,65 @@ const updateRoomDetails = async (req, res) => {
   }
 };
 
+/**
+ * @desc Update property status
+ * @route PATCH /api/properties/:id/status
+ * @access Private (ADMIN only)
+ */
+const updatePropertyStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // Validate status
+    if (!Object.values(property_status).includes(status)) {
+      return res.status(400).json({
+        status: "error",
+        message: "Invalid property status",
+      });
+    }
+
+    // Check if property exists
+    const property = await prisma.property.findUnique({
+      where: { id },
+    });
+
+    if (!property) {
+      return res.status(404).json({
+        status: "error",
+        message: "Property not found",
+      });
+    }
+
+    // Update property status
+    const updatedProperty = await prisma.property.update({
+      where: { id },
+      data: { status },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    return res.status(200).json({
+      status: "success",
+      message: "Property status updated successfully",
+      data: updatedProperty,
+    });
+  } catch (error) {
+    console.error("Error in updatePropertyStatus:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Error updating property status",
+    });
+  }
+};
+
 export default {
   createProperty,
   getAllProperties,
@@ -824,4 +883,5 @@ export default {
   updateProperty,
   deleteProperty,
   updateRoomDetails,
+  updatePropertyStatus,
 };
