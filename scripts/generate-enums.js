@@ -38,7 +38,7 @@ function generateJavaScriptEnums(enums) {
   }
 
   // Export all enums
-  output += "export const enums = {\n";
+  output += "export {\n";
   Object.keys(enums).forEach((enumName) => {
     output += `  ${enumName},\n`;
   });
