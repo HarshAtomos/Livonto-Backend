@@ -19,6 +19,8 @@ const createProperty = async (req, res) => {
       address,
       googleMapLocation,
       landmarks,
+      latitude,
+      longitude,
       depositAmount,
       noticePeriod,
       noticePeriodUnit,
@@ -28,8 +30,8 @@ const createProperty = async (req, res) => {
       electricityCharges,
       foodAvailability,
       gateClosingTime,
-      amenityIds,
-      houseRuleIds,
+      propertyAmenities,
+      propertyHouseRules,
       rooms,
       images,
     } = req.body;
@@ -50,8 +52,8 @@ const createProperty = async (req, res) => {
               ? 2
               : room.occupancyType === occupancy_type.TRIPLE
                 ? 3
-                : room.numberOfBeds) *
-            room.numberOfRooms,
+                : Number(room.numberOfBeds)) *
+            Number(room.numberOfRooms),
         0
       ) || 0;
     const totalAvailableBeds =
@@ -64,13 +66,16 @@ const createProperty = async (req, res) => {
               ? 2
               : room.occupancyType === occupancy_type.TRIPLE
                 ? 3
-                : room.numberOfBeds) *
-            room.numberOfAvailableRooms,
+                : Number(room.numberOfBeds)) *
+            Number(room.numberOfAvailableRooms),
         0
       ) || 0;
-    const hasAvailableRoomsGreaterThanRooms = rooms?.some(
-      (room) => room.numberOfAvailableRooms > room.numberOfRooms
-    );
+    let hasAvailableRoomsGreaterThanRooms = false;
+    rooms?.forEach((room) => {
+      if (Number(room.numberOfAvailableRooms) > Number(room.numberOfRooms)) {
+        hasAvailableRoomsGreaterThanRooms = true;
+      }
+    });
     if (hasAvailableRoomsGreaterThanRooms) {
       console.log(
         "Number of available rooms cannot be greater than total number of rooms"
@@ -89,8 +94,10 @@ const createProperty = async (req, res) => {
           address,
           googleMapLocation,
           landmarks,
+          latitude,
+          longitude,
           depositAmount,
-          noticePeriod,
+          noticePeriod: Number(noticePeriod),
           noticePeriodUnit,
           availableFor,
           preferredTenants,
@@ -106,6 +113,8 @@ const createProperty = async (req, res) => {
             req.user.role === user_role.ADMIN
               ? property_status.UNLISTED
               : property_status.PENDING_APPROVAL,
+          propertyAmenities,
+          propertyHouseRules,
           rooms: {
             create:
               rooms?.map((room) => ({
@@ -117,20 +126,14 @@ const createProperty = async (req, res) => {
                       ? 2
                       : room.occupancyType === occupancy_type.TRIPLE
                         ? 3
-                        : room.numberOfBeds,
-                rent: room.rent,
+                        : Number(room.numberOfBeds),
+                rent: Number(room.rent),
                 roomDimension: room.roomDimension,
-                numberOfRooms: room.numberOfRooms,
-                numberOfAvailableRooms: room.numberOfAvailableRooms,
-                roomAmenities: {
-                  create:
-                    room.amenityIds?.map((amenityId) => ({
-                      amenityId,
-                    })) || [],
-                },
+                numberOfRooms: Number(room.numberOfRooms),
+                numberOfAvailableRooms: Number(room.numberOfAvailableRooms),
+                roomAmenities: room.roomAmenities || [],
               })) || [],
           },
-
           images: {
             create:
               images?.map((image) => ({
@@ -140,40 +143,24 @@ const createProperty = async (req, res) => {
                 description: image.description,
               })) || [],
           },
-
-          propertyAmenities: {
-            create:
-              amenityIds?.map((amenityId) => ({
-                amenityId,
-              })) || [],
-          },
-
-          propertyHouseRules: {
-            create:
-              houseRuleIds?.map((houseRuleId) => ({
-                houseRuleId,
-              })) || [],
-          },
         },
         include: {
-          rooms: {
-            include: {
-              roomAmenities: {
-                include: {
-                  amenity: true,
-                },
-              },
-            },
-          },
+          rooms: true,
           images: true,
-          propertyAmenities: {
-            include: {
-              amenity: true,
+          owner: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
             },
           },
-          propertyHouseRules: {
-            include: {
-              houseRule: true,
+          manager: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
             },
           },
         },
@@ -222,7 +209,7 @@ const getAllProperties = async (req, res) => {
 
     // Build filter conditions
     const where = {
-      status: status,
+      status: status === "ALL" ? undefined : status,
       AND: [],
     };
 
@@ -254,13 +241,30 @@ const getAllProperties = async (req, res) => {
 
     // Amenities filter
     if (amenityIds) {
-      where.propertyAmenities = {
-        some: {
-          amenityId: {
-            in: Array.isArray(amenityIds) ? amenityIds : [amenityIds],
+      where.OR = [
+        {
+          propertyAmenities: {
+            some: {
+              amenityId: {
+                in: Array.isArray(amenityIds) ? amenityIds : [amenityIds],
+              },
+            },
           },
         },
-      };
+        {
+          rooms: {
+            some: {
+              roomAmenities: {
+                some: {
+                  amenityId: {
+                    in: Array.isArray(amenityIds) ? amenityIds : [amenityIds],
+                  },
+                },
+              },
+            },
+          },
+        },
+      ];
     }
 
     // Occupancy type filter
@@ -280,26 +284,8 @@ const getAllProperties = async (req, res) => {
     const properties = await prisma.property.findMany({
       where,
       include: {
-        rooms: {
-          include: {
-            roomAmenities: {
-              include: {
-                amenity: true,
-              },
-            },
-          },
-        },
+        rooms: true,
         images: true,
-        propertyAmenities: {
-          include: {
-            amenity: true,
-          },
-        },
-        propertyHouseRules: {
-          include: {
-            houseRule: true,
-          },
-        },
         owner: {
           select: {
             id: true,
@@ -364,26 +350,8 @@ const getPropertyById = async (req, res) => {
     const property = await prisma.property.findUnique({
       where: { id },
       include: {
-        rooms: {
-          include: {
-            roomAmenities: {
-              include: {
-                amenity: true,
-              },
-            },
-          },
-        },
+        rooms: true,
         images: true,
-        propertyAmenities: {
-          include: {
-            amenity: true,
-          },
-        },
-        propertyHouseRules: {
-          include: {
-            houseRule: true,
-          },
-        },
         owner: {
           select: {
             id: true,
@@ -438,6 +406,8 @@ const updateProperty = async (req, res) => {
       address,
       googleMapLocation,
       landmarks,
+      latitude,
+      longitude,
       depositAmount,
       noticePeriod,
       noticePeriodUnit,
@@ -448,8 +418,8 @@ const updateProperty = async (req, res) => {
       foodAvailability,
       gateClosingTime,
       status,
-      amenityIds,
-      houseRuleIds,
+      propertyAmenities,
+      propertyHouseRules,
       rooms,
       images,
       ownerId,
@@ -517,9 +487,6 @@ const updateProperty = async (req, res) => {
     const updatedProperty = await prisma.$transaction(async (prisma) => {
       // Delete existing relationships if new data is provided
       if (rooms) {
-        await prisma.roomAmenity.deleteMany({
-          where: { room: { propertyId: id } },
-        });
         await prisma.room.deleteMany({
           where: { propertyId: id },
         });
@@ -527,18 +494,6 @@ const updateProperty = async (req, res) => {
 
       if (images) {
         await prisma.propertyImage.deleteMany({
-          where: { propertyId: id },
-        });
-      }
-
-      if (amenityIds) {
-        await prisma.propertyAmenity.deleteMany({
-          where: { propertyId: id },
-        });
-      }
-
-      if (houseRuleIds) {
-        await prisma.propertyHouseRule.deleteMany({
           where: { propertyId: id },
         });
       }
@@ -552,6 +507,8 @@ const updateProperty = async (req, res) => {
           address,
           googleMapLocation,
           landmarks,
+          latitude,
+          longitude,
           depositAmount,
           noticePeriod,
           noticePeriodUnit,
@@ -566,6 +523,8 @@ const updateProperty = async (req, res) => {
           totalAvailableBeds,
           ownerId,
           managerId,
+          propertyAmenities,
+          propertyHouseRules,
           rooms: rooms
             ? {
                 create: rooms.map((room) => ({
@@ -582,12 +541,7 @@ const updateProperty = async (req, res) => {
                   roomDimension: room.roomDimension,
                   numberOfRooms: room.numberOfRooms,
                   numberOfAvailableRooms: room.numberOfAvailableRooms,
-                  roomAmenities: {
-                    create:
-                      room.amenityIds?.map((amenityId) => ({
-                        amenityId,
-                      })) || [],
-                  },
+                  roomAmenities: room.roomAmenities || [],
                 })),
               }
             : undefined,
@@ -601,44 +555,14 @@ const updateProperty = async (req, res) => {
                 })),
               }
             : undefined,
-          propertyAmenities: amenityIds
-            ? {
-                create: amenityIds.map((amenityId) => ({
-                  amenityId,
-                })),
-              }
-            : undefined,
-          propertyHouseRules: houseRuleIds
-            ? {
-                create: houseRuleIds.map((houseRuleId) => ({
-                  houseRuleId,
-                })),
-              }
-            : undefined,
+          propertyAmenities: propertyAmenities,
+          propertyHouseRules: propertyHouseRules,
         },
         include: {
           owner: true,
           manager: true,
-          rooms: {
-            include: {
-              roomAmenities: {
-                include: {
-                  amenity: true,
-                },
-              },
-            },
-          },
+          rooms: true,
           images: true,
-          propertyAmenities: {
-            include: {
-              amenity: true,
-            },
-          },
-          propertyHouseRules: {
-            include: {
-              houseRule: true,
-            },
-          },
         },
       });
     });
@@ -682,22 +606,21 @@ const deleteProperty = async (req, res) => {
     // Delete property and all related data in a transaction
     await prisma.$transaction(async (prisma) => {
       // Delete all related data first
-      await prisma.roomAmenity.deleteMany({
-        where: { room: { propertyId: id } },
-      });
       await prisma.room.deleteMany({
+        where: { propertyId: id },
+      });
+      await prisma.visit.deleteMany({
+        where: { propertyId: id },
+      });
+      await prisma.booking.deleteMany({
+        where: { propertyId: id },
+      });
+      await prisma.review.deleteMany({
         where: { propertyId: id },
       });
       await prisma.propertyImage.deleteMany({
         where: { propertyId: id },
       });
-      await prisma.propertyAmenity.deleteMany({
-        where: { propertyId: id },
-      });
-      await prisma.propertyHouseRule.deleteMany({
-        where: { propertyId: id },
-      });
-
       // Finally delete the property
       await prisma.property.delete({
         where: { id },

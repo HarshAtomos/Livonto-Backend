@@ -129,8 +129,8 @@ model Property {
   reviews        Review[]
   visits         Visit[]
   bookings       Booking[]
-  propertyAmenities PropertyAmenity[]
-  propertyHouseRules PropertyHouseRule[]
+  propertyAmenities String[]
+  propertyHouseRules String[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -146,7 +146,7 @@ model Room {
   numberOfAvailableRooms Int?
   property       Property       @relation(fields: [propertyId], references: [id])
   bookingRooms   BookingRoom[]
-  roomAmenities  RoomAmenity[]
+  roomAmenities  String[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -213,7 +213,7 @@ model Booking {
   property Property @relation(fields: [propertyId], references: [id])
   user     User     @relation(fields: [userId], references: [id])
   
-  bookingRooms BookingRoom[]
+  bookingRooms   BookingRoom[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -230,14 +230,11 @@ model BookingRoom {
 
   @@id([bookingId, roomId])
 }
-
 model Amenity {
   id             String   @id @default(uuid())
   name           String
   description    String?
   svgIcon        String?
-  propertyAmenities PropertyAmenity[]
-  roomAmenities     RoomAmenity[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -247,43 +244,6 @@ model HouseRule {
   rule           String
   description    String?
   svgIcon        String?
-  propertyHouseRules PropertyHouseRule[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-}
-
-model PropertyAmenity {
-  propertyId     String
-  amenityId       String
-
-  property       Property @relation(fields: [propertyId], references: [id])
-  amenity         Amenity  @relation(fields: [amenityId], references: [id])
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@id([propertyId, amenityId])
-}
-
-model PropertyHouseRule {
-  propertyId     String
-  houseRuleId    String
-
-  property       Property  @relation(fields: [propertyId], references: [id])
-  houseRule      HouseRule @relation(fields: [houseRuleId], references: [id])
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@id([propertyId, houseRuleId])
-}
-
-model RoomAmenity {
-  roomId         String
-  amenityId       String
-
-  room           Room    @relation(fields: [roomId], references: [id])
-  amenity         Amenity @relation(fields: [amenityId], references: [id])
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@id([roomId, amenityId])
 }

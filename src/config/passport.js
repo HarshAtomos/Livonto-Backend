@@ -48,15 +48,6 @@ const jwtOptions = {
 passport.use(
   new JwtStrategy(jwtOptions, async (payload, done) => {
     try {
-      // Check for both admin and regular users
-      const admin = await prisma.user.findUnique({
-        where: { id: payload.id },
-      });
-
-      if (admin) {
-        return done(null, admin);
-      }
-
       const user = await prisma.user.findUnique({
         where: { id: payload.id },
       });

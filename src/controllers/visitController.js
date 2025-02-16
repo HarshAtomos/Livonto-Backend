@@ -1,4 +1,9 @@
-import { PrismaClient, visit_status, user_role } from "@prisma/client";
+import {
+  PrismaClient,
+  visit_status,
+  user_role,
+  property_status,
+} from "@prisma/client";
 const prisma = new PrismaClient();
 
 /**
@@ -34,6 +39,14 @@ const createVisit = async (req, res) => {
       return res.status(404).json({
         status: "error",
         message: "Property not found",
+      });
+    }
+
+    if (property.status !== property_status.AVAILABLE) {
+      console.log("Property not available");
+      return res.status(404).json({
+        status: "error",
+        message: "Property not available",
       });
     }
 
