@@ -4,7 +4,14 @@ import {
   property_status,
   user_role,
 } from "@prisma/client";
+import cloudinary from "cloudinary";
 const prisma = new PrismaClient();
+
+cloudinary.v2.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 /**
  * @desc Create a new property with rooms and images
@@ -641,14 +648,66 @@ const deleteProperty = async (req, res) => {
 };
 
 /**
- * @desc Update room details (available rooms, total rooms)
+ * @desc Update room details
  * @route PATCH /api/properties/rooms/:roomId
  * @access Private (ADMIN and PROPERTY_OWNER)
  */
 const updateRoomDetails = async (req, res) => {
   try {
     const { roomId } = req.params;
-    const { numberOfRooms, numberOfAvailableRooms } = req.body;
+    const {
+      numberOfRooms,
+      numberOfAvailableRooms,
+      // Additional fields only for admin
+      occupancyType,
+      numberOfBeds,
+      rent,
+      roomDimension,
+      roomAmenities,
+    } = req.body;
+
+    // Check if room exists
+    const existingRoom = await prisma.room.findUnique({
+      where: { id: roomId },
+      include: {
+        property: true,
+      },
+    });
+
+    if (!existingRoom) {
+      return res.status(404).json({
+        status: "error",
+        message: "Room not found",
+      });
+    }
+
+    // For property owners, only allow updating room numbers
+    let updateData = {};
+    if (req.user.role === user_role.ADMIN) {
+      // Admin can update all fields
+      updateData = {
+        numberOfRooms,
+        numberOfAvailableRooms,
+        occupancyType,
+        numberOfBeds:
+          occupancyType === occupancy_type.SINGLE
+            ? 1
+            : occupancyType === occupancy_type.DOUBLE
+              ? 2
+              : occupancyType === occupancy_type.TRIPLE
+                ? 3
+                : numberOfBeds,
+        rent,
+        roomDimension,
+        roomAmenities,
+      };
+    } else {
+      // Property owners can only update room numbers
+      updateData = {
+        numberOfRooms,
+        numberOfAvailableRooms,
+      };
+    }
 
     // Validate input values
     if (numberOfRooms < 0 || numberOfAvailableRooms < 0) {
@@ -666,37 +725,11 @@ const updateRoomDetails = async (req, res) => {
       });
     }
 
-    // Check if room exists
-    const existingRoom = await prisma.room.findUnique({
-      where: { id: roomId },
-      include: {
-        property: true,
-      },
-    });
-
-    if (!existingRoom) {
-      return res.status(404).json({
-        status: "error",
-        message: "Room not found",
-      });
-    }
-
     // Update room details in a transaction
     const updatedRoom = await prisma.$transaction(async (prisma) => {
-      // Update room
       const room = await prisma.room.update({
         where: { id: roomId },
-        data: {
-          numberOfRooms,
-          numberOfAvailableRooms,
-        },
-        include: {
-          roomAmenities: {
-            include: {
-              amenity: true,
-            },
-          },
-        },
+        data: updateData,
       });
 
       // Recalculate property's total beds and available beds
@@ -799,6 +832,173 @@ const updatePropertyStatus = async (req, res) => {
   }
 };
 
+/**
+ * @desc Delete a room
+ * @route DELETE /api/properties/rooms/:roomId
+ * @access Private (ADMIN only)
+ */
+const deleteRoom = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+
+    // Check if room exists
+    const existingRoom = await prisma.room.findUnique({
+      where: { id: roomId },
+      include: {
+        property: true,
+      },
+    });
+
+    if (!existingRoom) {
+      return res.status(404).json({
+        status: "error",
+        message: "Room not found",
+      });
+    }
+
+    // Delete room and update property totals in a transaction
+    await prisma.$transaction(async (prisma) => {
+      // Delete room
+      await prisma.room.delete({
+        where: { id: roomId },
+      });
+
+      // Recalculate property's total beds and available beds
+      const allPropertyRooms = await prisma.room.findMany({
+        where: { propertyId: existingRoom.property.id },
+      });
+
+      const totalBeds = allPropertyRooms.reduce(
+        (sum, room) => sum + (room.numberOfBeds * room.numberOfRooms || 0),
+        0
+      );
+      const totalAvailableBeds = allPropertyRooms.reduce(
+        (sum, room) =>
+          sum + (room.numberOfBeds * room.numberOfAvailableRooms || 0),
+        0
+      );
+
+      // Update property with new totals
+      await prisma.property.update({
+        where: { id: existingRoom.property.id },
+        data: {
+          totalBeds,
+          totalAvailableBeds,
+        },
+      });
+    });
+
+    return res.status(200).json({
+      status: "success",
+      message: "Room deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error in deleteRoom:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Error deleting room",
+    });
+  }
+};
+
+/**
+ * @desc Update property image details
+ * @route PATCH /api/properties/images/:imageId
+ * @access Private (ADMIN and PROPERTY_OWNER)
+ */
+const updatePropertyImage = async (req, res) => {
+  try {
+    const { imageId } = req.params;
+    const { title, tag, description } = req.body;
+
+    // Check if image exists
+    const existingImage = await prisma.propertyImage.findUnique({
+      where: { id: imageId },
+      include: {
+        property: true,
+      },
+    });
+
+    if (!existingImage) {
+      return res.status(404).json({
+        status: "error",
+        message: "Property image not found",
+      });
+    }
+
+    // Update image details
+    const updatedImage = await prisma.propertyImage.update({
+      where: { id: imageId },
+      data: {
+        title,
+        tag,
+        description,
+      },
+    });
+
+    return res.status(200).json({
+      status: "success",
+      message: "Property image details updated successfully",
+      data: updatedImage,
+    });
+  } catch (error) {
+    console.error("Error in updatePropertyImage:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Error updating property image details",
+    });
+  }
+};
+
+/**
+ * @desc Delete property image
+ * @route DELETE /api/properties/images/:imageId
+ * @access Private (ADMIN and PROPERTY_OWNER)
+ */
+const deletePropertyImage = async (req, res) => {
+  try {
+    const { imageId, publicId } = req.params;
+    if (!publicId) {
+      return res.status(400).json({
+        status: "error",
+        message: "Public ID is required",
+      });
+    }
+    // Check if image exists
+    const existingImage = await prisma.propertyImage.findUnique({
+      where: { id: imageId },
+      include: {
+        property: true,
+      },
+    });
+
+    if (!existingImage) {
+      return res.status(404).json({
+        status: "error",
+        message: "Property image not found",
+      });
+    }
+
+    await cloudinary.v2.uploader.destroy(publicId);
+
+    // Delete from database
+    await prisma.propertyImage.delete({
+      where: { id: imageId },
+    });
+
+    return res.status(200).json({
+      status: "success",
+      message: "Property image deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error in deletePropertyImage:", error);
+    return res.status(500).json({
+      status: "error",
+      message: "Error deleting property image",
+    });
+  }
+};
+
 export default {
   createProperty,
   getAllProperties,
@@ -807,4 +1007,7 @@ export default {
   deleteProperty,
   updateRoomDetails,
   updatePropertyStatus,
+  deleteRoom,
+  updatePropertyImage,
+  deletePropertyImage,
 };

@@ -30,17 +30,38 @@ router.delete(
   propertyController.deleteProperty
 );
 
-router.patch(
+router.put(
+  "/status/:id",
+  isAuthenticated,
+  requireRole([user_role.ADMIN]),
+  propertyController.updatePropertyStatus
+);
+
+router.put(
   "/rooms/:roomId",
   isAuthenticated,
   requireRole([user_role.ADMIN, user_role.PROPERTY_OWNER]),
   propertyController.updateRoomDetails
 );
 
-router.put(
-  "/status/:id",
+router.delete(
+  "/rooms/:roomId",
   isAuthenticated,
   requireRole([user_role.ADMIN]),
-  propertyController.updatePropertyStatus
+  propertyController.deleteRoom
+);
+
+router.put(
+  "/images/:imageId",
+  isAuthenticated,
+  requireRole([user_role.ADMIN]),
+  propertyController.updatePropertyImage
+);
+
+router.delete(
+  "/images/:imageId/:publicId",
+  isAuthenticated,
+  requireRole([user_role.ADMIN]),
+  propertyController.deletePropertyImage
 );
 export default router;
