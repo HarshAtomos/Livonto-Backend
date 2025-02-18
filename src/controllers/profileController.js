@@ -113,6 +113,7 @@ const getAllUsers = async (req, res) => {
       },
       select: {
         id: true,
+        username: true,
         name: true,
         email: true,
         phone: true,
@@ -126,6 +127,8 @@ const getAllUsers = async (req, res) => {
         manager: {
           select: {
             id: true,
+            username: true,
+            gender: true,
             name: true,
             email: true,
             phone: true,
@@ -134,6 +137,8 @@ const getAllUsers = async (req, res) => {
         employees: {
           select: {
             id: true,
+            gender: true,
+            username: true,
             name: true,
             email: true,
             phone: true,
