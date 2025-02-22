@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, user_role } from "@prisma/client";
 const prisma = new PrismaClient();
 
 /**
@@ -22,11 +22,25 @@ const getProfile = async (req, res) => {
 
 const updateProfile = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const { id: userId, role } = req.user;
 
-    const { name, phone, address, occupation, city, profileImage, gender } =
-      req.body;
+    const {
+      name,
+      phone,
+      address,
+      occupation,
+      city,
+      profileImage,
+      gender,
+      email,
+    } = req.body;
 
+    if (role === user_role.USER && email !== req.user.email) {
+      return res.status(403).json({
+        status: "error",
+        message: "You cannot update your email",
+      });
+    }
     const updatedUser = await prisma.user.update({
       where: {
         id: userId,
@@ -39,6 +53,7 @@ const updateProfile = async (req, res) => {
         profileImage,
         occupation,
         gender,
+        email,
       },
     });
     const { password: _, ...userWithoutPassword } = updatedUser;

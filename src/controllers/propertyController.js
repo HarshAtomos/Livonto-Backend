@@ -445,7 +445,18 @@ const updateProperty = async (req, res) => {
         message: "Property not found",
       });
     }
-
+    if (managerId) {
+      // change managerId in visits table
+      await prisma.visit.updateMany({
+        where: { propertyId: id },
+        data: { managerId },
+      });
+      // change managerId in property table
+      await prisma.property.update({
+        where: { id },
+        data: { managerId },
+      });
+    }
     // Calculate total beds if rooms are being updated
     const totalBeds =
       rooms?.reduce(

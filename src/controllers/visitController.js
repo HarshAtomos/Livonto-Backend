@@ -115,7 +115,7 @@ const createVisit = async (req, res) => {
 
 /**
  * @desc Get visits based on user role and relationship
- * @route GET /api/visits
+ * @route GET /visits/all
  * @access Private
  */
 const getVisits = async (req, res) => {
@@ -145,7 +145,9 @@ const getVisits = async (req, res) => {
         };
         break;
       case user_role.MANAGER:
-        where.managerId = id;
+        where = {
+          managerId: id,
+        };
         break;
       case user_role.EMPLOYEE:
         where.employeeId = id;
@@ -247,6 +249,19 @@ const updateVisitStatus = async (req, res) => {
     let updateData = { status };
 
     if (role === user_role.ADMIN || role === user_role.MANAGER) {
+      if (visit.managerId !== req.user.id) {
+        return res.status(403).json({
+          status: "error",
+          message: "You can only update status for your own visits",
+        });
+      }
+      if (status === visit_status.CONFIRMED) {
+        return res.status(403).json({
+          status: "error",
+          message:
+            "You cannot confirm a visit, it gets automatically confirmed while assigning employee",
+        });
+      }
       updateData.managerFeedbacks = {
         push: feedbackEntry,
       };
