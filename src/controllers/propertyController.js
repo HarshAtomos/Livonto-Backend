@@ -24,6 +24,8 @@ const createProperty = async (req, res) => {
       name,
       description,
       address,
+      city,
+      pinCode,
       googleMapLocation,
       landmarks,
       latitude,
@@ -43,10 +45,10 @@ const createProperty = async (req, res) => {
       images,
     } = req.body;
 
-    if (!name || !address) {
+    if (!name || !address || !city) {
       return res.status(400).json({
         status: "error",
-        message: "Name and address are required",
+        message: "Name, address and city are required",
       });
     }
     const totalBeds =
@@ -99,6 +101,8 @@ const createProperty = async (req, res) => {
           name,
           description,
           address,
+          city,
+          pinCode,
           googleMapLocation,
           landmarks,
           latitude,
@@ -203,7 +207,8 @@ const getAllProperties = async (req, res) => {
       limit = 10,
 
       // Filters
-      search, // Search in name/description/address
+      search, // Search in name/description/address/city/pinCode
+      city,
       availableFor, // BOYS/GIRLS/BOTH
       preferredTenants, // STUDENTS/WORKING_PROFESSIONALS/ANYONE
       foodAvailability, // VEGETARIAN/NON_VEGETARIAN/BOTH/NONE
@@ -226,7 +231,11 @@ const getAllProperties = async (req, res) => {
         { name: { contains: search, mode: "insensitive" } },
         { description: { contains: search, mode: "insensitive" } },
         { address: { contains: search, mode: "insensitive" } },
+        { pinCode: { contains: search, mode: "insensitive" } },
       ];
+    }
+    if (city) {
+      where.city = { contains: city, mode: "insensitive" };
     }
 
     // Property type filters
@@ -248,25 +257,33 @@ const getAllProperties = async (req, res) => {
 
     // Amenities filter
     if (amenityIds) {
-      where.OR = [
+      let amenityIdsArray = [];
+      if (!Array.isArray(amenityIds)) {
+        amenityIdsArray = [amenityIds]; // Convert single string into an array
+      } else {
+        amenityIdsArray = amenityIds;
+      }
+      where.AND = [
         {
           propertyAmenities: {
-            some: {
-              amenityId: {
-                in: Array.isArray(amenityIds) ? amenityIds : [amenityIds],
-              },
-            },
+            // hasSome: {
+            //   amenityId: {
+            //     in: Array.isArray(amenityIds) ? amenityIds : [amenityIds],
+            //   },
+            // },
+            hasSome: amenityIdsArray,
           },
         },
         {
           rooms: {
             some: {
               roomAmenities: {
-                some: {
-                  amenityId: {
-                    in: Array.isArray(amenityIds) ? amenityIds : [amenityIds],
-                  },
-                },
+                // some: {
+                //   amenityId: {
+                //     in: Array.isArray(amenityIds) ? amenityIds : [amenityIds],
+                //   },
+                // },
+                hasSome: amenityIdsArray,
               },
             },
           },
@@ -322,7 +339,6 @@ const getAllProperties = async (req, res) => {
         createdAt: "desc",
       },
     });
-
     return res.status(200).json({
       status: "success",
       message: "Properties fetched successfully",
@@ -411,6 +427,8 @@ const updateProperty = async (req, res) => {
       name,
       description,
       address,
+      city,
+      pinCode,
       googleMapLocation,
       landmarks,
       latitude,
@@ -523,6 +541,8 @@ const updateProperty = async (req, res) => {
           name,
           description,
           address,
+          city,
+          pinCode,
           googleMapLocation,
           landmarks,
           latitude,
@@ -1010,6 +1030,25 @@ const deletePropertyImage = async (req, res) => {
   }
 };
 
+// write a new controller to get all the cities from all the properties
+/*
+ * @desc Get all the cities from all the properties
+ * @route GET /api/properties/cities
+ * @access Public
+ */
+const getAllCities = async (req, res) => {
+  const cities = await prisma.property.findMany({
+    select: {
+      city: true,
+    },
+  });
+  const uniqueCities = [...new Set(cities.map((city) => city.city))];
+  return res.status(200).json({
+    status: "success",
+    data: uniqueCities,
+  });
+};
+
 export default {
   createProperty,
   getAllProperties,
@@ -1021,4 +1060,5 @@ export default {
   deleteRoom,
   updatePropertyImage,
   deletePropertyImage,
+  getAllCities,
 };

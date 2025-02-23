@@ -102,6 +102,8 @@ model Property {
   name           String
   description    String?
   address        String?
+  city           String?
+  pinCode        String?
   googleMapLocation String?
   landmarks      String[]
   latitude       Float?

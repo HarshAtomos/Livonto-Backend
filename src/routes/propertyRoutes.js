@@ -64,4 +64,7 @@ router.delete(
   requireRole([user_role.ADMIN]),
   propertyController.deletePropertyImage
 );
+
+router.get("/cities", propertyController.getAllCities);
+
 export default router;
