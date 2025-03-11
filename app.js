@@ -6,6 +6,7 @@ import authRoutes from "./src/routes/authRoutes.js";
 import profileRoutes from "./src/routes/profileRoutes.js";
 import propertyRoutes from "./src/routes/propertyRoutes.js";
 import visitRoutes from "./src/routes/visitRoutes.js";
+import bookingRoutes from "./src/routes/bookingRoutes.js";
 import amenityHouseRuleRoutes from "./src/routes/amenityHouseRuleRoutes.js";
 const app = express();
 app.use(cors());
@@ -48,6 +49,7 @@ app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/profile", profileRoutes);
 app.use("/api/v1/property", propertyRoutes);
 app.use("/api/v1/visit", visitRoutes);
+app.use("/api/v1/booking", bookingRoutes);
 app.use("/api/v1/amenity-house-rule", amenityHouseRuleRoutes);
 
 export { app };

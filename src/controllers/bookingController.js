@@ -1,4 +1,9 @@
-import { PrismaClient, booking_status, visit_status } from "@prisma/client";
+import {
+  PrismaClient,
+  booking_status,
+  user_role,
+  visit_status,
+} from "@prisma/client";
 const prisma = new PrismaClient();
 
 /**
@@ -9,13 +14,18 @@ const prisma = new PrismaClient();
 const createBooking = async (req, res) => {
   try {
     const { visitId, rooms } = req.body;
-    const userId = req.user.id;
+    const { role, id: userId } = req.user;
 
     // Validate visit
     const visit = await prisma.visit.findUnique({
       where: {
         id: visitId,
-        userId: userId, // Ensure visit belongs to user
+        OR: [
+          { role: user_role.ADMIN },
+          { userId: userId },
+          { managerId: userId },
+          { employeeId: userId },
+        ],
       },
       include: {
         property: true,
