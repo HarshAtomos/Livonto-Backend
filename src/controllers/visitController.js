@@ -68,14 +68,21 @@ const createVisit = async (req, res) => {
         message: "You already have an active visit request for this property",
       });
     }
-
+    const additionalInfoEntry = JSON.stringify({
+      feedback: additionalInfo,
+      timestamp: new Date(),
+      status: visit_status.PENDING_APPROVAL, // Store what status was set
+    });
     // Create visit request
     const visit = await prisma.visit.create({
       data: {
         propertyId,
         userId: req.user.id,
         managerId: property.manager?.id,
-        additionalInfo,
+        userFeedbacks:
+          req.user.role === user_role.USER ? [additionalInfoEntry] : [],
+        managerFeedbacks:
+          req.user.role === user_role.MANAGER ? [additionalInfoEntry] : [],
         status: visit_status.PENDING_APPROVAL,
       },
       include: {
@@ -145,9 +152,7 @@ const getVisits = async (req, res) => {
         };
         break;
       case user_role.MANAGER:
-        where = {
-          managerId: id,
-        };
+        where.managerId = id;
         break;
       case user_role.EMPLOYEE:
         where.employeeId = id;
@@ -190,10 +195,18 @@ const getVisits = async (req, res) => {
       },
     });
 
+    // Parse feedback arrays for response
+    const parsedVisit = visits.map((visit) => ({
+      ...visit,
+      userFeedbacks: visit.userFeedbacks?.map((f) => JSON.parse(f)) || [],
+      managerFeedbacks: visit.managerFeedbacks?.map((f) => JSON.parse(f)) || [],
+      employeeFeedbacks:
+        visit.employeeFeedbacks?.map((f) => JSON.parse(f)) || [],
+    }));
     return res.status(200).json({
       status: "success",
       message: "Visits fetched successfully",
-      data: visits,
+      data: parsedVisit,
     });
   } catch (error) {
     console.error("Error in getVisits:", error);
@@ -342,7 +355,7 @@ const updateVisitStatus = async (req, res) => {
       employeeFeedbacks:
         updatedVisit.employeeFeedbacks?.map((f) => JSON.parse(f)) || [],
     };
-
+    console.log("Visit status updated successfully");
     return res.status(200).json({
       status: "success",
       message: "Visit status updated successfully",

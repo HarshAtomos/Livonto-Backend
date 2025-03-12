@@ -13,18 +13,24 @@ router.post(
   requireRole([user_role.USER, user_role.ADMIN, user_role.MANAGER]),
   bookingController.createBooking
 );
-// router.get("/all", isAuthenticated, bookingController.getVisits);
-// router.put(
-//   "/update/:id",
-//   isAuthenticated,
-//   requireRole([
-//     user_role.ADMIN,
-//     user_role.MANAGER,
-//     user_role.EMPLOYEE,
-//     user_role.USER,
-//   ]),
-//   bookingController.updateVisitStatus
-// );
+router.get(
+  "/",
+  isAuthenticated,
+  requireRole([user_role.ADMIN, user_role.MANAGER]),
+  bookingController.getAllBookings
+);
+router.get("/:id", isAuthenticated, bookingController.getABooking);
+router.get(
+  "/scanner/:id",
+  isAuthenticated,
+  bookingController.getABookingForScanner
+);
+router.patch(
+  "/:id/activate",
+  isAuthenticated,
+  requireRole([user_role.ADMIN, user_role.MANAGER]),
+  bookingController.activateBooking
+);
 // router.put(
 //   "/assign-employee/:id",
 //   isAuthenticated,

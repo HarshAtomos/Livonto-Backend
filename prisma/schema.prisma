@@ -185,7 +185,6 @@ model Visit {
   userId         String
   managerId      String?
   employeeId     String?
-  additionalInfo String?
   scheduledAt   DateTime?
   status         visit_status @default(PENDING_APPROVAL)
   userFeedbacks     String[]    // Array of JSON strings
@@ -202,13 +201,13 @@ model Visit {
 }
 
 model Booking {
-  id                String       @id
+  id                String       @id @default(uuid())
   visitId           String       @unique
   propertyId        String
   userId            String
   paymentAmount     Decimal      @db.Decimal
   paymentTimestamp  DateTime     @default(now())
-  validity          DateTime
+  validity          DateTime?
   status            booking_status
 
   visit    Visit    @relation("VisitBooking", fields: [visitId], references: [id])

@@ -375,6 +375,8 @@ const getPropertyById = async (req, res) => {
       include: {
         rooms: true,
         images: true,
+        visits: true,
+        bookings: true,
         owner: {
           select: {
             id: true,
