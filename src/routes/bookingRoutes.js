@@ -31,11 +31,5 @@ router.patch(
   requireRole([user_role.ADMIN, user_role.MANAGER]),
   bookingController.activateBooking
 );
-// router.put(
-//   "/assign-employee/:id",
-//   isAuthenticated,
-//   requireRole([user_role.ADMIN, user_role.MANAGER]),
-//   bookingController.assignEmployee
-// );
 
 export default router;
