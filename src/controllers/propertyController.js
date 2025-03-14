@@ -314,6 +314,7 @@ const getAllProperties = async (req, res) => {
           select: {
             id: true,
             name: true,
+            username: true,
             phone: true,
             email: true,
             profileImage: true,
@@ -325,6 +326,7 @@ const getAllProperties = async (req, res) => {
           select: {
             id: true,
             name: true,
+            username: true,
             phone: true,
             email: true,
             profileImage: true,

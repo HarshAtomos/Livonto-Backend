@@ -25,7 +25,16 @@ const adminLogin = async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const admin = await prisma.user.findUnique({ where: { username } });
+    // Check if input is email or username
+    const admin = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username },
+          { email: username }, // Check if the provided username is actually an email
+        ],
+      },
+    });
+
     if (!admin) {
       console.log("Invalid credentials");
       return res.status(401).json({
@@ -33,6 +42,7 @@ const adminLogin = async (req, res) => {
         message: "Invalid credentials",
       });
     }
+
     const validPassword = await bcrypt.compare(password, admin.password);
 
     if (!validPassword) {
@@ -42,11 +52,13 @@ const adminLogin = async (req, res) => {
         message: "Invalid credentials",
       });
     }
+
     const token = jwt.sign(
       { id: admin.id, role: admin.role },
       process.env.JWT_SECRET,
       { expiresIn: "1h" }
     );
+
     res.json({
       status: "success",
       message: "Login successful",
@@ -166,4 +178,69 @@ const createAdminAccount = async (req, res) => {
   }
 };
 
-export default { googleAuthCallback, adminLogin, createAdminAccount };
+/**
+ * @desc Delete admin account
+ * @route DELETE /admin/delete-account/:id
+ * @access Private (Admin/Manager)
+ */
+const deleteAdminAccount = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Find the account to be deleted
+    const accountToDelete = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!accountToDelete) {
+      return res.status(404).json({
+        status: "error",
+        message: "Account not found",
+      });
+    }
+
+    // Role-based permission check
+    if (req.user.role === user_role.MANAGER) {
+      // Managers can only delete their employee accounts
+      if (
+        accountToDelete.role !== user_role.EMPLOYEE ||
+        accountToDelete.managerId !== req.user.id
+      ) {
+        console.log("Managers can only delete their employee accounts");
+        return res.status(403).json({
+          status: "error",
+          message: "You can only delete employee accounts that you manage",
+        });
+      }
+    } else if (req.user.role !== user_role.ADMIN) {
+      console.log("Insufficient permissions");
+      return res.status(403).json({
+        status: "error",
+        message: "Insufficient permissions",
+      });
+    }
+
+    // Delete the user
+    await prisma.user.delete({
+      where: { id },
+    });
+
+    return res.status(200).json({
+      status: "success",
+      message: "Account deleted successfully",
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      status: "error",
+      message: "Something went wrong",
+    });
+  }
+};
+
+export default {
+  googleAuthCallback,
+  adminLogin,
+  createAdminAccount,
+  deleteAdminAccount,
+};

@@ -86,15 +86,6 @@ const getAllUsers = async (req, res) => {
     // Convert single role to array if needed
     const roleFilters = Array.isArray(roles) ? roles : [roles];
 
-    // Check if user has permission to view users
-    if (userRole !== "ADMIN" && userRole !== "MANAGER") {
-      console.log("You do not have permission to view all users");
-      return res.status(403).json({
-        status: "error",
-        message: "You do not have permission to view all users",
-      });
-    }
-
     let whereClause = {};
 
     // Admin can see filtered users
@@ -108,16 +99,8 @@ const getAllUsers = async (req, res) => {
     // Manager can only see their employees and themselves
     else if (userRole === "MANAGER") {
       whereClause = {
-        OR: [
-          {
-            role: "EMPLOYEE",
-            managerId: userId,
-          },
-          {
-            role: "MANAGER",
-            id: userId,
-          },
-        ],
+        role: "EMPLOYEE",
+        managerId: userId,
       };
     }
 

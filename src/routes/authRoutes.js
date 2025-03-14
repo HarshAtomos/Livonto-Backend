@@ -24,5 +24,11 @@ router.post(
   requireRole([user_role.ADMIN, user_role.MANAGER]),
   authController.createAdminAccount
 );
+router.delete(
+  "/admin/delete-account/:id",
+  isAuthenticated,
+  requireRole([user_role.ADMIN, user_role.MANAGER]),
+  authController.deleteAdminAccount
+);
 
 export default router;
