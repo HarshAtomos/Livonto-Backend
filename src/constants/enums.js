@@ -55,9 +55,9 @@ const occupancy_type = {
 Object.freeze(occupancy_type)
 
 const booking_status = {
-  PAID: "PAID",
-  ACTIVE: "ACTIVE",
-  EXPIRED: "EXPIRED",
+  PENDING_CONFIRMATION: "PENDING_CONFIRMATION",
+  CONFIRMED: "CONFIRMED",
+  CANCELLED: "CANCELLED",
 }
 
 Object.freeze(booking_status)
@@ -67,6 +67,7 @@ const visit_status = {
   CONFIRMED: "CONFIRMED",
   CANCELLED: "CANCELLED",
   COMPLETED: "COMPLETED",
+  BOOKED: "BOOKED",
   EXPIRED: "EXPIRED",
   DELAYED: "DELAYED",
 }

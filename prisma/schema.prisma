@@ -51,9 +51,9 @@ enum occupancy_type {
 }
 
 enum booking_status {
-  PAID
-  ACTIVE
-  EXPIRED
+  PENDING_CONFIRMATION
+  CONFIRMED
+  CANCELLED
 }
 
 enum visit_status {
@@ -61,6 +61,7 @@ enum visit_status {
   CONFIRMED
   CANCELLED
   COMPLETED
+  BOOKED
   EXPIRED
   DELAYED
 }
@@ -68,7 +69,7 @@ enum visit_status {
 model User {
   id             String   @id @default(uuid())
   name           String?
-  username       String? @unique
+  username       String?
   googleId       String? @unique
   email          String? @unique
   password       String?
@@ -206,6 +207,8 @@ model Booking {
   propertyId        String
   userId            String
   paymentAmount     Decimal      @db.Decimal
+  discountAmount    Decimal      @db.Decimal
+  paidAmount       Decimal      @db.Decimal
   paymentTimestamp  DateTime     @default(now())
   validity          DateTime?
   status            booking_status

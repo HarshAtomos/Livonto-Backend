@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
  */
 const createBooking = async (req, res) => {
   try {
-    const { visitId, rooms } = req.body;
+    const { visitId, rooms, couponCode } = req.body;
     const { role, id: userId } = req.user;
 
     // Validate visit
@@ -110,13 +110,31 @@ const createBooking = async (req, res) => {
       0
     );
 
+    // Check if coupon code is valid
+    const coupon = await validateCouponCodeInternal(couponCode, userId);
+    if (coupon.status === "error") {
+      return res.status(400).json({
+        status: "error",
+        message: coupon.message,
+      });
+    }
+    let paidAmount = paymentAmount;
+    if (coupon.status === "success") {
+      paidAmount = paymentAmount - Number(process.env.COUPON_DISCOUNT);
+    }
+
     // Create booking with transaction
     const booking = await prisma.$transaction(async (prisma) => {
       // Create booking
       const newBooking = await prisma.booking.create({
         data: {
           paymentAmount,
-          status: booking_status.PAID,
+          discountAmount:
+            coupon.status === "success"
+              ? Number(process.env.COUPON_DISCOUNT)
+              : 0,
+          paidAmount,
+          status: booking_status.PENDING_CONFIRMATION,
           validity: null,
           visit: {
             connect: {
@@ -159,6 +177,25 @@ const createBooking = async (req, res) => {
         },
       });
 
+      //Update visit status to BOOKED
+      await prisma.visit.update({
+        where: { id: visit.id },
+        data: {
+          status: visit_status.BOOKED,
+        },
+      });
+
+      // Incerase number of referrals of the user
+      if (coupon.data) {
+        await prisma.user.update({
+          where: { id: coupon.data.id },
+          data: {
+            referrals: {
+              increment: 1,
+            },
+          },
+        });
+      }
       // Update room availability
       await Promise.all(
         rooms.map((room) =>
@@ -289,6 +326,45 @@ const getABooking = async (req, res) => {
   }
 };
 
+// Separate validation logic from route handler
+const validateCouponCodeInternal = async (couponCode, userId) => {
+  if (!couponCode) {
+    return { status: "success", message: "No coupon code provided" };
+  }
+
+  const user = await prisma.user.findFirst({
+    where: {
+      referralCode: couponCode,
+    },
+  });
+
+  if (!user) {
+    return { status: "error", message: "Not a valid coupon" };
+  }
+
+  if (user.id === userId) {
+    return {
+      status: "error",
+      message: "You cannot use your own referral code",
+    };
+  }
+
+  return {
+    status: "success",
+    message: "It's a valid coupon",
+    data: { id: user.id, discount: Number(process.env.COUPON_DISCOUNT) },
+  };
+};
+
+// Update the route handler to use the internal function
+const validateCouponCode = async (req, res) => {
+  const { couponCode } = req.body;
+  const { id: userId } = req.user;
+
+  const result = await validateCouponCodeInternal(couponCode, userId);
+  return res.status(result.status === "success" ? 200 : 400).json(result);
+};
+
 /**
  * @desc Get a booking for property_owner
  * @route GET /booking/scanner/:id
@@ -364,15 +440,7 @@ const getABookingForScanner = async (req, res) => {
 const activateBooking = async (req, res) => {
   try {
     const { id } = req.params;
-    const { role } = req.user;
-
-    // Check permissions
-    if (role !== user_role.ADMIN && role !== user_role.MANAGER) {
-      return res.status(403).json({
-        status: "error",
-        message: "Only admins and managers can activate bookings",
-      });
-    }
+    // const { role } = req.user;
 
     // Get booking
     const booking = await prisma.booking.findUnique({
@@ -394,7 +462,7 @@ const activateBooking = async (req, res) => {
       });
     }
 
-    if (booking.status !== booking_status.PAID) {
+    if (booking.status !== booking_status.PENDING_CONFIRMATION) {
       return res.status(400).json({
         status: "error",
         message: "Only PAID bookings can be activated",
@@ -405,8 +473,10 @@ const activateBooking = async (req, res) => {
     const updatedBooking = await prisma.booking.update({
       where: { id },
       data: {
-        status: booking_status.ACTIVE,
-        validity: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from activation
+        status: booking_status.CONFIRMED,
+        validity: new Date(
+          new Date().setHours(23, 59, 59, 999) + 30 * 24 * 60 * 60 * 1000
+        ), // till the end of the 30th day
       },
       include: {
         bookingRooms: {
@@ -440,47 +510,85 @@ const activateBooking = async (req, res) => {
   }
 };
 
+const voucherValidity = async (req, res) => {
+  const { id } = req.params;
+  // Get booking
+  const booking = await prisma.booking.findUnique({
+    where: {
+      id,
+      // property: {
+      //   managerId: role == user_role.MANAGER ? req.user.id : undefined,
+      // },
+    },
+    include: {
+      property: true,
+    },
+  });
+
+  if (!booking) {
+    return res.status(404).json({
+      status: "error",
+      message: "Booking not found",
+    });
+  }
+  const now = new Date();
+  const validity = booking.validity;
+  if (validity && validity < now) {
+    return res.status(200).json({
+      status: "success",
+      message: "Voucher is valid",
+      data: "Valid till " + validity.toISOString(),
+    });
+  } else {
+    return res.status(200).json({
+      status: "error",
+      message: "Voucher is expired",
+    });
+  }
+};
 /**
  * @desc Cron job to check and expire bookings
  * Should run daily
  */
-const checkAndExpireBookings = async () => {
-  try {
-    const now = new Date();
+// const checkAndExpireBookings = async () => {
+//   try {
+//     const now = new Date();
 
-    // Find active bookings that have passed their validity
-    const expiredBookings = await prisma.booking.findMany({
-      where: {
-        status: booking_status.ACTIVE,
-        validity: {
-          lt: now,
-        },
-      },
-    });
+//     // Find active bookings that have passed their validity
+//     const expiredBookings = await prisma.booking.findMany({
+//       where: {
+//         status: booking_status.ACTIVE,
+//         validity: {
+//           lt: now,
+//         },
+//       },
+//     });
 
-    // Update expired bookings
-    await prisma.$transaction(
-      expiredBookings.map((booking) =>
-        prisma.booking.update({
-          where: { id: booking.id },
-          data: {
-            status: booking_status.EXPIRED,
-          },
-        })
-      )
-    );
+//     // Update expired bookings
+//     await prisma.$transaction(
+//       expiredBookings.map((booking) =>
+//         prisma.booking.update({
+//           where: { id: booking.id },
+//           data: {
+//             status: booking_status.EXPIRED,
+//           },
+//         })
+//       )
+//     );
 
-    console.log(`Successfully expired ${expiredBookings.length} bookings`);
-  } catch (error) {
-    console.error("Error in checkAndExpireBookings:", error);
-  }
-};
+//     console.log(`Successfully expired ${expiredBookings.length} bookings`);
+//   } catch (error) {
+//     console.error("Error in checkAndExpireBookings:", error);
+//   }
+// };
 
 export default {
   createBooking,
   getAllBookings,
+  validateCouponCode,
   getABooking,
   getABookingForScanner,
   activateBooking,
-  checkAndExpireBookings,
+  voucherValidity,
+  // checkAndExpireBookings,
 };

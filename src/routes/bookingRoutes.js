@@ -19,6 +19,11 @@ router.get(
   requireRole([user_role.ADMIN, user_role.MANAGER]),
   bookingController.getAllBookings
 );
+router.post(
+  "/validate-coupon",
+  isAuthenticated,
+  bookingController.validateCouponCode
+);
 router.get("/:id", isAuthenticated, bookingController.getABooking);
 router.get(
   "/scanner/:id",
@@ -31,5 +36,6 @@ router.patch(
   requireRole([user_role.ADMIN, user_role.MANAGER]),
   bookingController.activateBooking
 );
+router.get("/:id/validity", isAuthenticated, bookingController.voucherValidity);
 
 export default router;

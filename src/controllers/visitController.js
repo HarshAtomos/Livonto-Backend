@@ -268,7 +268,7 @@ const updateVisitStatus = async (req, res) => {
           message: "You can only update status for your own visits",
         });
       }
-      if (status === visit_status.CONFIRMED) {
+      if (status === visit_status.CONFIRMED && !visit.employeeId) {
         return res.status(403).json({
           status: "error",
           message:

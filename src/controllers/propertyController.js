@@ -701,6 +701,8 @@ const updateRoomDetails = async (req, res) => {
       roomAmenities,
     } = req.body;
 
+    console.log(req.body);
+
     // Check if room exists
     const existingRoom = await prisma.room.findUnique({
       where: { id: roomId },
@@ -721,8 +723,10 @@ const updateRoomDetails = async (req, res) => {
     if (req.user.role === user_role.ADMIN) {
       // Admin can update all fields
       updateData = {
-        numberOfRooms,
-        numberOfAvailableRooms,
+        numberOfRooms: numberOfRooms ? Number(numberOfRooms) : undefined,
+        numberOfAvailableRooms: numberOfAvailableRooms
+          ? Number(numberOfAvailableRooms)
+          : undefined,
         occupancyType,
         numberOfBeds:
           occupancyType === occupancy_type.SINGLE
@@ -731,16 +735,20 @@ const updateRoomDetails = async (req, res) => {
               ? 2
               : occupancyType === occupancy_type.TRIPLE
                 ? 3
-                : numberOfBeds,
-        rent,
+                : numberOfBeds
+                  ? Number(numberOfBeds)
+                  : undefined,
+        rent: rent ? Number(rent) : undefined,
         roomDimension,
         roomAmenities,
       };
     } else {
       // Property owners can only update room numbers
       updateData = {
-        numberOfRooms,
-        numberOfAvailableRooms,
+        numberOfRooms: numberOfRooms ? Number(numberOfRooms) : undefined,
+        numberOfAvailableRooms: numberOfAvailableRooms
+          ? Number(numberOfAvailableRooms)
+          : undefined,
       };
     }
 
@@ -762,6 +770,8 @@ const updateRoomDetails = async (req, res) => {
 
     // Update room details in a transaction
     const updatedRoom = await prisma.$transaction(async (prisma) => {
+      console.log(updateData);
+
       const room = await prisma.room.update({
         where: { id: roomId },
         data: updateData,

@@ -15,6 +15,16 @@ const getReviews = async (req, res) => {
       where: {
         ...(propertyId ? { propertyId } : {}),
       },
+      include: {
+        user: {
+          select: {
+            username: true,
+            name: true,
+            profileImage: true,
+            email: true,
+          },
+        },
+      },
     });
 
     // Calculate statistics
